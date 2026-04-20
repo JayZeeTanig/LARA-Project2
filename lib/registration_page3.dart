@@ -1,7 +1,9 @@
+import 'package:firebase_storage/firebase_storage.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+
 import 'dart:convert';
 import 'dart:io';
 
-import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
@@ -246,55 +248,52 @@ class _RegistrationPage3State extends State<RegistrationPage3> {
     return base64Image;
   }
 
+  // Add this inside your _RegistrationPage3State class
   Future<void> _handleFinalSubmission() async {
-    if (_mediaFiles.contains(null)) {
-      _showErrorSnackBar("Please complete all 4 requirements.");
-      return;
-    }
-
     setState(() => _isVerifying = true);
+
     try {
-      String idUrl = await _uploadSingleFile(_mediaFiles[0]!, "identity_id");
-      String selfieUrl = await _uploadSingleFile(_mediaFiles[1]!, "selfie");
-      String vUrl = await _uploadSingleFile(
-        _mediaFiles[2]!,
-        "veh_${widget.currentVehicle.plate}",
-      );
-      String pUrl = await _uploadSingleFile(
-        _mediaFiles[3]!,
-        "plate_${widget.currentVehicle.plate}",
+      // 1. Upload to Firebase Storage
+      // We use the username to create a unique filename
+      final storageRef = FirebaseStorage.instance.ref().child(
+        'registrations/${widget.username}/id_card.jpg',
       );
 
-      await FirebaseFirestore.instance
-          .collection('registrations')
-          .doc(docId)
-          .set({
-            'fullName': widget.fullName,
-            'username': widget.username,
-            'phone': widget.phoneNumber,
-            'eulaAccepted': widget.isEulaAccepted,
-            'identityUrl': idUrl,
-            'selfieUrl': selfieUrl,
-            'vehicles': [
-              {
-                'plate': widget.currentVehicle.plate,
-                'make': widget.currentVehicle.make,
-                'model': widget.currentVehicle.model,
-                'year': widget.currentVehicle.year,
-                'type': widget.currentVehicle.type,
-                'vehicleImageUrl': vUrl,
-                'plateImageUrl': pUrl,
-              },
-            ],
-            'status': 'pending',
-            'createdAt': FieldValue.serverTimestamp(),
-          });
-      if (!mounted) return;
-      _showSuccessDialog(context);
+      // Upload the first file from your media list
+      UploadTask uploadTask = storageRef.putFile(_mediaFiles[0]!);
+      TaskSnapshot snapshot = await uploadTask;
+
+      // 2. Get the download URL
+      // This solves the 'INVALID_ARGUMENT' error by using a link instead of the raw image
+      String downloadUrl = await snapshot.ref.getDownloadURL();
+
+      // 3. Save to Firestore
+      await FirebaseFirestore.instance.collection('users').add({
+        'fullName': widget.fullName,
+        'username': widget.username,
+        'phoneNumber': widget.phoneNumber,
+        'vehicle': {
+          'type': widget.currentVehicle.type,
+          'model': widget.currentVehicle.model,
+          'plateNumber': widget.currentVehicle.plateNumber,
+        },
+      });
+
+      // Success! Show a message and go home
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Registration Successful!')),
+        );
+        Navigator.of(context).popUntil((route) => route.isFirst);
+      }
     } catch (e) {
-      _showErrorSnackBar("Final upload failed. Please try again.");
+      if (mounted) {
+        ScaffoldMessenger.of(
+          context,
+        ).showSnackBar(SnackBar(content: Text('Upload failed: $e')));
+      }
     } finally {
-      setState(() => _isVerifying = false);
+      if (mounted) setState(() => _isVerifying = false);
     }
   }
 
