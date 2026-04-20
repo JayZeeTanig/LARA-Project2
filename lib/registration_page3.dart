@@ -1,13 +1,13 @@
-import 'package:google_mlkit_commons/google_mlkit_commons.dart';
 import 'dart:convert';
 import 'dart:io';
-import 'package:image_picker/image_picker.dart';
-import 'package:flutter/material.dart';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/material.dart';
 import 'package:google_mlkit_face_detection/google_mlkit_face_detection.dart';
-import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
 import 'package:google_mlkit_image_labeling/google_mlkit_image_labeling.dart';
-import 'package:firebase_storage/firebase_storage.dart';
+import 'package:google_mlkit_text_recognition/google_mlkit_text_recognition.dart';
+import 'package:image_picker/image_picker.dart';
+
 import 'registration_page2.dart';
 
 class RegistrationPage3 extends StatefulWidget {
