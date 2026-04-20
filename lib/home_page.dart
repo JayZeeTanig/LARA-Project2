@@ -1,8 +1,17 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart'; // Add this
+import 'package:cloud_firestore/cloud_firestore.dart'; // Add this
 
-class HomePage extends StatelessWidget {
+class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // This gets the currently logged in user
+  final User? user = FirebaseAuth.instance.currentUser;
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -118,7 +127,22 @@ class HomePage extends StatelessWidget {
       ),
       child: Center(
         child: GestureDetector(
-          onTap: () => debugPrint("Navigate to Vehicle Selection Page"),
+          onTap: () async {
+            //Updated to async for Firestore operation
+            // This sends a "Request" to your Firebase Database
+            await FirebaseFirestore.instance
+                .collection('emergency_requests')
+                .add({
+                  'user_id': user?.uid,
+                  'status': 'pending',
+                  'timestamp': FieldValue.serverTimestamp(),
+                  'location': 'Quezon City', // You can add GPS logic later!
+                });
+
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text("SOS Request Sent to Mechanics!")),
+            );
+          },
           child: Container(
             width: 130,
             height: 130,

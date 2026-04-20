@@ -53,35 +53,29 @@ class _RegistrationPage1State extends State<RegistrationPage1> {
 
   // firestore will check for dups
   Future<void> _checkUsernameAvailability(String username) async {
-    // Always check against lowercase
     final queryName = username.trim().toLowerCase();
-    if (queryName.isEmpty) return;
-
-    final result = await FirebaseFirestore.instance
-        .collection('registrations')
-        .where('username', isEqualTo: queryName)
-        .get();
-
-    setState(() {
-      _isUsernameAvailable = result.docs.isEmpty;
-    });
+    if (queryName.isEmpty) {
+      setState(() => _isUsernameAvailable = true);
+      return;
+    }
 
     setState(() => _isCheckingUsername = true);
 
     try {
+      // Single query is enough
       final result = await FirebaseFirestore.instance
           .collection('registrations')
-          .where('username', isEqualTo: username)
+          .where('username', isEqualTo: queryName)
           .get();
 
       setState(() {
-        // If result is empty, username is available
         _isUsernameAvailable = result.docs.isEmpty;
         _isCheckingUsername = false;
       });
 
       _validateForm();
     } catch (e) {
+      debugPrint("Error checking username: $e");
       setState(() => _isCheckingUsername = false);
     }
   }
