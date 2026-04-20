@@ -133,7 +133,13 @@ class _RegistrationPage2State extends State<RegistrationPage2> {
                           _buildCheckbox("Motorcycle", _isMotorcycle, (val) {
                             setState(() {
                               _isMotorcycle = val!;
-                              if (!_isMotorcycle) _isBoth = false;
+                              if (!_isMotorcycle) {
+                                _isBoth = false; // This is good
+                              }
+                              if (_isMotorcycle && _isPrivateCar) {
+                                _isBoth =
+                                    true; // Add this logic // to auto-check "Both" if both types are selected
+                              }
                               _validateForm();
                             });
                           }),
@@ -262,6 +268,9 @@ class _RegistrationPage2State extends State<RegistrationPage2> {
             ),
             child: TextField(
               controller: controller,
+              keyboardType: label == "Vehicle Year"
+                  ? TextInputType.number
+                  : TextInputType.text, // Updated keyboard type for year
               decoration: InputDecoration(
                 hintText: hint,
                 hintStyle: const TextStyle(

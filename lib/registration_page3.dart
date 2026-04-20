@@ -1,3 +1,5 @@
+import 'package:google_mlkit_commons/google_mlkit_commons.dart';
+import 'dart:convert';
 import 'dart:io';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
@@ -34,6 +36,42 @@ class _RegistrationPage3State extends State<RegistrationPage3> {
   bool _isVerifying = false;
   String? docId;
 
+  // Define detectors here to manage their lifecycle
+  late FaceDetector _faceDetector;
+  late TextRecognizer _textRecognizer;
+  late ImageLabeler _imageLabeler;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Initialize Face Detector
+    _faceDetector = FaceDetector(
+      options: FaceDetectorOptions(
+        performanceMode: FaceDetectorMode.accurate,
+        enableLandmarks: true,
+        enableClassification: true,
+      ),
+    );
+
+    // Initialize Text Recognizer (latin is the default script)
+    _textRecognizer = TextRecognizer(script: TextRecognitionScript.latin);
+
+    // Initialize Image Labeler
+    _imageLabeler = ImageLabeler(
+      options: ImageLabelerOptions(confidenceThreshold: 0.5),
+    );
+  } //updated initState to initialize detectors
+
+  @override
+  void dispose() {
+    // Close all instances to prevent memory leaks
+    _faceDetector.close();
+    _textRecognizer.close();
+    _imageLabeler.close();
+    super.dispose();
+  }
+
   double _calculateSimilarity(String s1, String s2) {
     if (s1 == s2) return 1.0;
     if (s1.isEmpty || s2.isEmpty) return 0.0;
@@ -46,16 +84,11 @@ class _RegistrationPage3State extends State<RegistrationPage3> {
 
   Future<bool> _verifySelfie(File imageFile) async {
     final inputImage = InputImage.fromFile(imageFile);
-    final faceDetector = FaceDetector(
-      options: FaceDetectorOptions(
-        performanceMode: FaceDetectorMode.accurate,
-        enableLandmarks: true,
-        enableClassification: true,
-      ),
-    );
     try {
-      final List<Face> faces = await faceDetector.processImage(inputImage);
+      // Use the class-level _faceDetector instead of creating a new one
+      final List<Face> faces = await _faceDetector.processImage(inputImage);
       if (faces.isEmpty) return false;
+
       final face = faces.first;
       if (face.boundingBox.height < 150) return false;
       if (face.headEulerAngleY != null && face.headEulerAngleY!.abs() > 25) {
@@ -64,22 +97,21 @@ class _RegistrationPage3State extends State<RegistrationPage3> {
       return true;
     } catch (e) {
       return false;
-    } finally {
-      await faceDetector.close();
     }
+    // No need for 'finally { await faceDetector.close(); }' here anymore!
   }
 
   Future<bool> _isNotSelfie(File imageFile) async {
     final inputImage = InputImage.fromFile(imageFile);
-    final faceDetector = FaceDetector(options: FaceDetectorOptions());
     try {
-      final List<Face> faces = await faceDetector.processImage(inputImage);
+      // Use the class-level _faceDetector instead of creating a local one
+      final List<Face> faces = await _faceDetector.processImage(inputImage);
       return faces.isEmpty;
     } catch (e) {
+      debugPrint("Error in _isNotSelfie: $e");
       return false;
-    } finally {
-      await faceDetector.close();
     }
+    // No finally block needed because _faceDetector is closed in dispose()
   }
 
   Future<bool> _isVehicle(File imageFile) async {
@@ -206,11 +238,12 @@ class _RegistrationPage3State extends State<RegistrationPage3> {
   }
 
   Future<String> _uploadSingleFile(File file, String name) async {
-    docId ??= "user_${DateTime.now().millisecondsSinceEpoch}";
-    final task = await FirebaseStorage.instance
-        .ref('uploads/$docId/$name.jpg')
-        .putFile(file);
-    return await task.ref.getDownloadURL();
+    // 1. Read the image and convert to Base64 string
+    List<int> imageBytes = await file.readAsBytes();
+    String base64Image = base64Encode(imageBytes);
+
+    // 2. We return the string instead of a URL from Storage
+    return base64Image;
   }
 
   Future<void> _handleFinalSubmission() async {
@@ -256,6 +289,7 @@ class _RegistrationPage3State extends State<RegistrationPage3> {
             'status': 'pending',
             'createdAt': FieldValue.serverTimestamp(),
           });
+      if (!mounted) return;
       _showSuccessDialog(context);
     } catch (e) {
       _showErrorSnackBar("Final upload failed. Please try again.");
