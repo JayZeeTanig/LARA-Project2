@@ -60,8 +60,9 @@ class _RegistrationPage3State extends State<RegistrationPage3> {
       if (faces.isEmpty) return false;
       final face = faces.first;
       if (face.boundingBox.height < 150) return false;
-      if (face.headEulerAngleY != null && face.headEulerAngleY!.abs() > 25)
+      if (face.headEulerAngleY != null && face.headEulerAngleY!.abs() > 25) {
         return false;
+      }
       return true;
     } catch (e) {
       return false;
@@ -197,10 +198,11 @@ class _RegistrationPage3State extends State<RegistrationPage3> {
 
       setState(() {
         _isVerifying = false;
-        if (ok)
+        if (ok) {
           _mediaFiles[index] = file;
-        else
+        } else {
           _showErrorSnackBar("Verification failed. Please try again.");
+        }
       });
     }
   }
